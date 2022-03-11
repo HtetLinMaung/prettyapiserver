@@ -1,5 +1,4 @@
 const express = require("express");
-const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const Owner = require("../models/Owner");
 const isAuth = require("../middlewares/is-auth");
@@ -11,10 +10,11 @@ router
   .route("/")
   .post(isAuth, async (req, res) => {
     try {
-      const { name, description, visibility, json, tags } = req.body;
+      const { name, description, visibility, json, tags, access_key } =
+        req.body;
       const api = new Api({
         name,
-        access_key: crypto.randomBytes(16).toString("hex"),
+        access_key,
         description,
         visibility,
         json,
@@ -44,7 +44,7 @@ router
     try {
       const authHeader = req.get("Authorization");
       let tokenData = null;
-      if (authHeader) {
+      if (authHeader && authHeader.split(" ")[1]) {
         const token = authHeader.split(" ")[1];
         let decodedToken;
         try {
@@ -59,6 +59,7 @@ router
         }
         tokenData = decodedToken;
       }
+      console.log(tokenData);
 
       const page = req.query.page ? parseInt(req.query.page) : 1;
       const per_page = req.query.per_page;
@@ -111,7 +112,7 @@ router
     try {
       const authHeader = req.get("Authorization");
       let tokenData = null;
-      if (authHeader) {
+      if (authHeader && authHeader.split(" ")[1]) {
         const token = authHeader.split(" ")[1];
         let decodedToken;
         try {
@@ -134,12 +135,18 @@ router
           message: "Api not found",
         });
       }
-      if (api.access_key != access_key) {
+
+      if (
+        tokenData &&
+        tokenData.ownerid != api.owner &&
+        api.access_key != access_key
+      ) {
         return res.status(401).json({
           code: 401,
           message: "Invalid access key",
         });
       }
+
       if (api.visibility == "private") {
         if (!tokenData) {
           return res
@@ -153,6 +160,7 @@ router
           });
         }
       }
+
       res.json({
         code: 200,
         message: "Success",
@@ -188,6 +196,25 @@ router
         message: "Success",
         data: api,
       });
+    } catch (err) {
+      console.log(err);
+      res.status(500).json({ message: err.message, code: 500 });
+    }
+  })
+  .delete(isAuth, async (req, res) => {
+    try {
+      const api = await Api.findOne({
+        ref: req.params.ref,
+        owner: req.tokenData.ownerid,
+      });
+      if (!api) {
+        return res.status(404).json({
+          code: 404,
+          message: "Api not found",
+        });
+      }
+      await api.remove();
+      res.sendStatus(204);
     } catch (err) {
       console.log(err);
       res.status(500).json({ message: err.message, code: 500 });
