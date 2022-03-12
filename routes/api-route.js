@@ -19,7 +19,7 @@ router
         visibility,
         json,
         owner: req.tokenData.ownerid,
-        tags,
+        tags: tags.map((tag) => (!tag.includes("#") ? `#${tag}` : tag)),
       });
 
       await api.save();
@@ -59,17 +59,21 @@ router
         }
         tokenData = decodedToken;
       }
-      console.log(tokenData);
 
       const page = req.query.page ? parseInt(req.query.page) : 1;
       const per_page = req.query.per_page;
       const search = req.query.search;
+      const tag = req.query.tag;
 
       const filter = {};
       if (tokenData) {
         filter["owner"] = tokenData.ownerid;
       } else {
         filter["visibility"] = "public";
+      }
+
+      if (tag) {
+        filter["tags"] = tag;
       }
 
       if (search) {
