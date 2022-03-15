@@ -64,10 +64,21 @@ router
       const per_page = req.query.per_page;
       const search = req.query.search;
       const tag = req.query.tag;
+      const screen = req.query.screen || "library";
 
       const filter = {};
       if (tokenData) {
-        filter["owner"] = tokenData.ownerid;
+        if (screen == "library") {
+          filter["owner"] = tokenData.ownerid;
+        } else if (screen == "explore") {
+          filter["$or"] = [
+            { visibility: "public" },
+            {
+              owner: tokenData.ownerid,
+              visibility: "private",
+            },
+          ];
+        }
       } else {
         filter["visibility"] = "public";
       }
@@ -140,15 +151,13 @@ router
         });
       }
 
-      if (
-        tokenData &&
-        tokenData.ownerid != api.owner &&
-        api.access_key != access_key
-      ) {
-        return res.status(401).json({
-          code: 401,
-          message: "Invalid access key",
-        });
+      if (!tokenData || tokenData.ownerid != api.owner) {
+        if (api.access_key != access_key) {
+          return res.status(401).json({
+            code: 401,
+            message: "Invalid access key",
+          });
+        }
       }
 
       if (api.visibility == "private") {
