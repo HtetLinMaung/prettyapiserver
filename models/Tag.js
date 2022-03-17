@@ -13,6 +13,6 @@ const tagSchema = new Schema(
   }
 );
 
-apiSchema.index({ "$**": "text" });
+tagSchema.index({ "$**": "text" });
 
 module.exports = model("Tag", tagSchema);
