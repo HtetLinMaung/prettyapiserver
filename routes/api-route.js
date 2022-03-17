@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const Owner = require("../models/Owner");
 const isAuth = require("../middlewares/is-auth");
 const Api = require("../models/Api");
+const Tag = require("../models/Tag");
 
 const router = express.Router();
 
@@ -25,6 +26,13 @@ router
       await api.save();
       api.ref = name.toLowerCase().trim().replaceAll(" ", "_") + `_${api._id}`;
       await api.save();
+      for (const tag of api.tags) {
+        let t = await Tag.findOne({ name: tag });
+        if (!t) {
+          t = new Tag({ name: tag });
+          t.save();
+        }
+      }
 
       const owner = await Owner.findById(api.owner);
       owner.apis.push(api._id);
